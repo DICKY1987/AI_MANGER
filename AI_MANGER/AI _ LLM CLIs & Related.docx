@@ -1,0 +1,85 @@
+Here’s a single, deduped list that merges everything—kept tidy and grouped, with versions where you provided them. (If no version was given, I left it blank.)
+
+# AI / LLM CLIs & Related
+
+* Claude Code CLI — **2.0.31**
+* Aider — **0.86.0**
+* Gemini CLI (Google) — **0.11.3**
+* OpenAI CLI (a.k.a. “Codex CLI”) — **0.53.0**
+* GitHub Copilot CLI — **0.0.353**
+* LangGraph CLI — **0.4.5**  *(you also mentioned a pinned 0.0.14 earlier; 0.4.5 is the newer line)*
+* Jules CLI
+* Specify CLI
+* DeepSeek Coder v2 lite *(Ollama model pull)*
+
+# Model Runtimes / Engines
+
+* Ollama — **0.12.9**
+
+# Languages & Runtimes
+
+* Python 3.12 — **3.12.12**
+* Node.js (Active LTS) — **v24.11.0**
+* PowerShell 7 (Core) — **7.4.13**
+
+# Package / Env Managers
+
+* pipx — **1.8.0**
+* uv (Astral)
+* npm *(bundled with Node.js)*
+* pnpm — **10.20.0**
+* nox — **2025.10.16**
+
+# VCS & Dev Tooling
+
+* Git — **2.51.2**
+* Git LFS — **3.6.1**
+* GitHub CLI (gh) — **2.82.1**
+* GNU Make — **4.4**
+* Go Task — **3.42.1**
+* 7-Zip — **25.01**
+
+# Linters / Formatters / Type Checkers / Tests
+
+* Ruff — **0.14.1**
+* Black — **25.9.0**
+* isort — **7.0.0**
+* Prettier — **3.6.2**
+* ESLint — **9.39.0**
+* Pylint — **4.0.1**
+* mypy — **1.18.2**
+* pyright — **1.1.407**
+* yamllint — **1.37.1**
+* markdownlint-cli — **0.45.0**
+* mdformat — **1.0.0**
+* codespell — **2.4.1**
+* pytest — **8.4.2**
+* unittest *(stdlib)*
+
+# Security & SAST/Secrets/Containers
+
+* Bandit — **1.8.6**
+* Safety — **3.6.2**
+* Semgrep — **1.142.0**
+* Gitleaks — **8.28.0**
+* Trivy — **0.67.0**
+
+# Web / Backend
+
+* FastAPI — **0.120.4**
+* Uvicorn
+
+# Datastores & Extensions
+
+* PostgreSQL — **18.0**
+* pgvector — **0.8.0**
+* Redis — **8.2.3**
+
+# CLI Utilities
+
+* jq — **1.8.0**
+* yq — **4.48.1**
+* ripgrep (rg) — **15.1.0**
+* fd (fd-find) — **10.2.0**
+
+

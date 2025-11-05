@@ -1,0 +1,121 @@
+{
+  "ToolsRoot": "C:\\Tools",
+  "PipxApps": [
+    "invoke",
+    "aider-chat",
+    "ruff",
+    "black",
+    "isort",
+    "pylint",
+    "mypy",
+    "pyright",
+    "pytest",
+    "nox",
+    "pre-commit",
+    "uv",
+    "langgraph-cli"
+  ],
+  "NpmGlobal": [
+    "@google/generative-ai-cli",
+    "@anthropic-ai/claude-code",
+    "@google/jules",
+    "@specifyapp/cli",
+    "eslint",
+    "prettier"
+  ],
+  "CopilotPkgs": [
+    "github-copilot-cli",
+    "@githubnext/github-copilot-cli"
+  ],
+  "WatchRoots": [
+    "C:\\Users\\richg\\Projects",
+    "D:\\Work"
+  ],
+  "CentralCache": "C:\\Tools\\cache",
+  "BuildWrappers": false,
+  "Pins": {
+    "pipx": {
+      "ruff": "0.14.1",
+      "black": "25.9.0",
+      "isort": "7.0.0",
+      "pylint": "4.0.1",
+      "mypy": "1.18.2",
+      "pyright": "1.1.407",
+      "pytest": "8.4.2",
+      "pre-commit": "3.8.0"
+    },
+    "npm": {
+      "@google/generative-ai-cli": "0.11.3",
+      "@anthropic-ai/claude-code": "2.0.31",
+      "eslint": "9.39.0",
+      "prettier": "3.6.2"
+    }
+  },
+  "Audit": {
+    "AllowRoots": [
+      "C:\\Tools\\config",
+      "C:\\Tools\\cache",
+      "C:\\Tools\\data"
+    ],
+    "Notify": {
+      "Toast": false,
+      "WriteJson": "C:\\Tools\\audit\\4663.jsonl",
+      "WebhookUrl": ""
+    },
+    "TaskName": "CLI_4663_Alerts"
+  },
+  "MasterBin": {
+    "Enable": false,
+    "Path": "C:\\Tools\\bin",
+    "Sources": [
+      "C:\\Tools\\pipx\\bin",
+      "C:\\Tools\\node\\npm",
+      "C:\\Tools\\pnpm\\bin"
+    ],
+    "Priority": [
+      "pipx",
+      "npm",
+      "pnpm"
+    ],
+    "DenyList": [
+      "node",
+      "python",
+      "py",
+      "npm",
+      "pnpm"
+    ]
+  },
+  "Scan": {
+    "Roots": [
+      "C:\\Users\\richg\\Projects",
+      "D:\\Work"
+    ],
+    "AllowCentral": [
+      "C:\\Tools\\config",
+      "C:\\Tools\\cache",
+      "C:\\Tools\\data"
+    ],
+    "Patterns": [
+      ".ruff_cache",
+      ".mypy_cache",
+      ".pytest_cache",
+      ".eslintcache",
+      ".prettier-cache",
+      "__pycache__",
+      ".cache",
+      "node_modules\\.cache"
+    ],
+    "MinSizeKBForHash": 0
+  },
+  "Secrets": {
+    "VaultPath": "%LOCALAPPDATA%\\CLI_Vault\\vault.json",
+    "EnvMap": {
+      "OPENAI_API_KEY": "openai",
+      "ANTHROPIC_API_KEY": "anthropic",
+      "GITHUB_TOKEN": "github"
+    }
+  },
+  "Reports": {
+    "Dir": "%LOCALAPPDATA%\\CLI_Reports"
+  }
+}

@@ -1,0 +1,10 @@
+\
+# Common tool caches & virtualenvs
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.nox/
+.venv/
+venv/
+node_modules/.cache/
+.eslintcache
