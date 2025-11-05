@@ -9,9 +9,15 @@ function Register-Plugin {
     $script = Join-Path $BuildRoot "scripts\centralize_cli_config.ps1"
     if (Test-Path $script) {
       $flag = $Context.BuildWrappers ? "-BuildWrappers" : ""
-      Invoke-Quiet "pwsh -ExecutionPolicy Bypass -File `"$script`" $flag"
+      try {
+        Invoke-WithRetry -MaxAttempts 3 -DelayMs 1000 -ScriptBlock {
+          Invoke-Quiet "pwsh -ExecutionPolicy Bypass -File `"$script`" $flag"
+        }
+      } catch {
+        Write-Warning "Failed to centralize config after retries: $_"
+      }
     } else {
-      Write-Warning "centralize_cli_config.ps1 not found"
+      Write-Warning "centralize_cli_config.ps1 not found at: $script"
     }
   }
 }

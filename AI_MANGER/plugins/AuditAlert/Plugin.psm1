@@ -170,12 +170,19 @@ function Register-4663Task {
 
 function Register-Plugin {
   param($Context, $BuildRoot)
+  Import-Module (Join-Path $BuildRoot "plugins\Common\Plugin.Interfaces.psm1") -Force
 
   task Audit.InstallAlerts {
     Write-Host "==> Installing 4663 alert task" -ForegroundColor Cyan
-    $path = Ensure-AuditAlertScript -Context $Context
-    if (Register-4663Task -Context $Context) {
-      Write-Host "Scheduled Task installed. Name: $($Context.Audit.TaskName)" -ForegroundColor Green
+    try {
+      $path = Ensure-AuditAlertScript -Context $Context
+      if (Register-4663Task -Context $Context) {
+        Write-Host "Scheduled Task installed. Name: $($Context.Audit.TaskName)" -ForegroundColor Green
+      } else {
+        Write-Warning "Failed to register scheduled task. This usually requires Administrator privileges."
+      }
+    } catch {
+      Write-Warning "Failed to install audit alerts: $_"
     }
   }
 
@@ -191,12 +198,29 @@ function Register-Plugin {
 
   task Audit.TestAlert {
     Write-Host "==> Writing a synthetic alert line (no event required)" -ForegroundColor Cyan
-    $dst = $Context.Audit.Notify.WriteJson
-    $dir = Split-Path -Parent $dst
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    $obj = @{ TimeCreated = Get-Date; RecordId = -1; ObjectName = "$env:TEMP\dummy.txt"; ProcessName="powershell.exe"; SubjectUser=$env:USERNAME }
-    (ConvertTo-Json $obj -Compress) + "`n" | Add-Content -Path $dst -Encoding UTF8
-    Write-Host "Wrote: $dst" -ForegroundColor Green
+    try {
+      $dst = $Context.Audit.Notify.WriteJson
+      $dir = Split-Path -Parent $dst
+      if (-not (Test-Path $dir)) { 
+        New-Item -ItemType Directory -Force -Path $dir -ErrorAction Stop | Out-Null 
+      }
+      
+      $obj = @{ 
+        TimeCreated = Get-Date
+        RecordId = -1
+        ObjectName = "$env:TEMP\dummy.txt"
+        ProcessName = "powershell.exe"
+        SubjectUser = $env:USERNAME
+      }
+      
+      Lock-ResourceFile -ResourceName "Audit.Log" -ScriptBlock {
+        (ConvertTo-Json $obj -Compress) + "`n" | Add-Content -Path $dst -Encoding UTF8 -ErrorAction Stop
+      }
+      
+      Write-Host "Wrote: $dst" -ForegroundColor Green
+    } catch {
+      Write-Warning "Failed to write test alert: $_"
+    }
   }
 }
 

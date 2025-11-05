@@ -2,6 +2,7 @@
 param()
 function Register-Plugin {
   param($Context, $BuildRoot)
+  Import-Module (Join-Path $BuildRoot "plugins\Common\Plugin.Interfaces.psm1") -Force
 
   function Get-NpmInstalledVersion([string]$Name) {
     try {
@@ -60,32 +61,81 @@ function Register-Plugin {
       time = (Get-Date).ToString("s")
     }
 
+    Write-Host "==> Checking npm package versions..." -ForegroundColor Cyan
     foreach ($name in @($Context.NpmGlobal)) {
-      $have = Get-NpmInstalledVersion $name
-      $want = Get-NpmLatestVersion $name
-      $report.npm += @{ name=$name; installed=$have; latest=$want; update=(if ($want -and $have -and $want -ne $have) { $true } else { $false }) }
+      try {
+        $have = Get-NpmInstalledVersion $name
+        $want = Get-NpmLatestVersion $name
+        $report.npm += @{ name=$name; installed=$have; latest=$want; update=(if ($want -and $have -and $want -ne $have) { $true } else { $false }) }
+      } catch {
+        Write-Warning "Failed to check npm package ${name}: $_"
+        $report.npm += @{ name=$name; installed=$null; latest=$null; update=$false; error=$_.ToString() }
+      }
     }
 
+    Write-Host "==> Checking pipx package versions..." -ForegroundColor Cyan
     foreach ($name in @($Context.PipxApps)) {
-      $have = Get-PipxInstalledVersion $name
-      $want = Get-PipxLatestVersion $name
-      $report.pipx += @{ name=$name; installed=$have; latest=$want; update=(if ($want -and $have -and $want -ne $have) { $true } else { $false }) }
+      try {
+        $have = Get-PipxInstalledVersion $name
+        $want = Get-PipxLatestVersion $name
+        $report.pipx += @{ name=$name; installed=$have; latest=$want; update=(if ($want -and $have -and $want -ne $have) { $true } else { $false }) }
+      } catch {
+        Write-Warning "Failed to check pipx package ${name}: $_"
+        $report.pipx += @{ name=$name; installed=$null; latest=$null; update=$false; error=$_.ToString() }
+      }
     }
 
     $dir = [Environment]::ExpandEnvironmentVariables($Context.Reports.Dir)
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    if (-not (Test-Path $dir)) { 
+      New-Item -ItemType Directory -Force -Path $dir | Out-Null 
+    }
+    
     $out = Join-Path $dir "updates.json"
-    ($report | ConvertTo-Json -Depth 6) | Set-Content -Path $out -Encoding UTF8
-    Write-Host "Wrote $out" -ForegroundColor Green
+    try {
+      ($report | ConvertTo-Json -Depth 6) | Set-Content -Path $out -Encoding UTF8 -ErrorAction Stop
+      Write-Host "Wrote $out" -ForegroundColor Green
+      
+      # Summary
+      $npmUpdates = ($report.npm | Where-Object { $_.update }).Count
+      $pipxUpdates = ($report.pipx | Where-Object { $_.update }).Count
+      Write-Host "Found $npmUpdates npm and $pipxUpdates pipx packages with updates available" -ForegroundColor Yellow
+    } catch {
+      Write-Warning "Failed to write update report: $_"
+    }
   }
 
   task Update.All {
+    $failed = @()
+    
     Write-Host "==> Updating npm -g packages" -ForegroundColor Cyan
     foreach ($name in @($Context.NpmGlobal)) {
-      cmd /c "npm update -g $name" | Out-Host
+      try {
+        Invoke-WithRetry -MaxAttempts 2 -DelayMs 2000 -ScriptBlock {
+          cmd /c "npm update -g $name" | Out-Host
+          if ($LASTEXITCODE -ne 0) { throw "npm update failed with exit code $LASTEXITCODE" }
+        }
+      } catch {
+        $failed += "npm:$name"
+        Write-Warning "Failed to update npm package ${name}: $_"
+      }
     }
+    
     Write-Host "==> Upgrading pipx apps" -ForegroundColor Cyan
-    cmd /c "pipx upgrade --all --include-injected" | Out-Host
+    try {
+      Invoke-WithRetry -MaxAttempts 2 -DelayMs 2000 -ScriptBlock {
+        cmd /c "pipx upgrade --all --include-injected" | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "pipx upgrade failed with exit code $LASTEXITCODE" }
+      }
+    } catch {
+      $failed += "pipx:all"
+      Write-Warning "Failed to upgrade pipx packages: $_"
+    }
+    
+    if ($failed.Count -gt 0) {
+      Write-Warning "Failed to update $($failed.Count) package(s): $($failed -join ', ')"
+    } else {
+      Write-Host "All packages updated successfully" -ForegroundColor Green
+    }
   }
 }
 Export-ModuleMember -Function Register-Plugin
