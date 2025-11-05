@@ -2,6 +2,7 @@
 param()
 function Register-Plugin {
   param($Context, $BuildRoot)
+  Import-Module (Join-Path $BuildRoot "plugins\Common\Plugin.Interfaces.psm1") -Force
 
   function Expand-Env([string]$s) { [Environment]::ExpandEnvironmentVariables($s) }
   function Check-Cmd([string]$name) {
@@ -27,70 +28,100 @@ function Register-Plugin {
   }
 
   task Health.Check {
-    $reportDir = Expand-Env $Context.Reports.Dir
-    if (-not (Test-Path $reportDir)) { New-Item -ItemType Directory -Force -Path $reportDir | Out-Null }
-    $out = Join-Path $reportDir "health.json"
-
-    $wantOrder = @(
-      "C:\Tools\pipx\bin",
-      "C:\Tools\pnpm\bin",
-      "C:\Tools\node\npm",
-      "C:\Tools\go\bin",
-      "C:\Tools\cargo\bin"
-    )
-
-    $res = @{
-      time = (Get-Date).ToString("s")
-      env  = @{
-        PIPX_HOME            = $env:PIPX_HOME
-        PIPX_BIN_DIR         = $env:PIPX_BIN_DIR
-        PNPM_HOME            = $env:PNPM_HOME
-        NPM_PREFIX           = (cmd /c "npm config get prefix")
-        XDG_CONFIG_HOME      = $env:XDG_CONFIG_HOME
-        XDG_CACHE_HOME       = $env:XDG_CACHE_HOME
-        XDG_DATA_HOME        = $env:XDG_DATA_HOME
-        PIP_CACHE_DIR        = $env:PIP_CACHE_DIR
-        ESLINT_CACHE         = $env:ESLINT_CACHE
-        ESLINT_CACHE_LOCATION= $env:ESLINT_CACHE_LOCATION
+    try {
+      $reportDir = Expand-Env $Context.Reports.Dir
+      if (-not (Test-Path $reportDir)) { 
+        New-Item -ItemType Directory -Force -Path $reportDir -ErrorAction Stop | Out-Null 
       }
-      dirs = @(
-        Check-Dir "C:\Tools\pipx\bin",
-        Check-Dir "C:\Tools\node\npm",
-        Check-Dir "C:\Tools\pnpm\bin",
-        Check-Dir "C:\Tools\cache",
-        Check-Dir "C:\Tools\config",
-        Check-Dir "C:\Tools\data"
-      )
-      pathOrder = (Path-OrderOk $wantOrder)
-      commands = @(
-        Check-Cmd "git",
-        Check-Cmd "node",
-        Check-Cmd "py",
-        Check-Cmd "pipx",
-        Check-Cmd "pnpm",
-        Check-Cmd "aider",
-        Check-Cmd "ruff",
-        Check-Cmd "black",
-        Check-Cmd "langgraph",
-        Check-Cmd "gemini",
-        Check-Cmd "claude-code",
-        Check-Cmd "copilot"
-      )
-      advice = @()
-    }
+      $out = Join-Path $reportDir "health.json"
 
-    if (-not $res.pathOrder.exists -or -not $res.pathOrder.ordered) {
-      $res.advice += "Reorder User PATH to front-load: " + ($wantOrder -join ';')
-    }
-    foreach ($d in $res.dirs) {
-      if (-not $d.exists) { $res.advice += "Create missing directory: " + $d.path }
-    }
-    foreach ($c in $res.commands) {
-      if (-not $c.ok) { $res.advice += "Install or expose on PATH: " + $c.cmd }
-    }
+      $wantOrder = @(
+        "C:\Tools\pipx\bin",
+        "C:\Tools\pnpm\bin",
+        "C:\Tools\node\npm",
+        "C:\Tools\go\bin",
+        "C:\Tools\cargo\bin"
+      )
 
-    ($res | ConvertTo-Json -Depth 6) | Set-Content -Path $out -Encoding UTF8
-    Write-Host "Wrote $out" -ForegroundColor Green
+      Write-Host "==> Running health checks..." -ForegroundColor Cyan
+
+      $res = @{
+        time = (Get-Date).ToString("s")
+        env  = @{
+          PIPX_HOME            = $env:PIPX_HOME
+          PIPX_BIN_DIR         = $env:PIPX_BIN_DIR
+          PNPM_HOME            = $env:PNPM_HOME
+          NPM_PREFIX           = try { (cmd /c "npm config get prefix" 2>$null) } catch { $null }
+          XDG_CONFIG_HOME      = $env:XDG_CONFIG_HOME
+          XDG_CACHE_HOME       = $env:XDG_CACHE_HOME
+          XDG_DATA_HOME        = $env:XDG_DATA_HOME
+          PIP_CACHE_DIR        = $env:PIP_CACHE_DIR
+          ESLINT_CACHE         = $env:ESLINT_CACHE
+          ESLINT_CACHE_LOCATION= $env:ESLINT_CACHE_LOCATION
+        }
+        dirs = @(
+          Check-Dir "C:\Tools\pipx\bin",
+          Check-Dir "C:\Tools\node\npm",
+          Check-Dir "C:\Tools\pnpm\bin",
+          Check-Dir "C:\Tools\cache",
+          Check-Dir "C:\Tools\config",
+          Check-Dir "C:\Tools\data"
+        )
+        pathOrder = (Path-OrderOk $wantOrder)
+        commands = @(
+          Check-Cmd "git",
+          Check-Cmd "node",
+          Check-Cmd "py",
+          Check-Cmd "pipx",
+          Check-Cmd "pnpm",
+          Check-Cmd "aider",
+          Check-Cmd "ruff",
+          Check-Cmd "black",
+          Check-Cmd "langgraph",
+          Check-Cmd "gemini",
+          Check-Cmd "claude-code",
+          Check-Cmd "copilot"
+        )
+        advice = @()
+        status = "healthy"
+      }
+
+      if (-not $res.pathOrder.exists -or -not $res.pathOrder.ordered) {
+        $res.advice += "Reorder User PATH to front-load: " + ($wantOrder -join ';')
+        $res.status = "warning"
+      }
+      foreach ($d in $res.dirs) {
+        if (-not $d.exists) { 
+          $res.advice += "Create missing directory: " + $d.path 
+          $res.status = "warning"
+        }
+      }
+      
+      $missingCommands = 0
+      foreach ($c in $res.commands) {
+        if (-not $c.ok) { 
+          $res.advice += "Install or expose on PATH: " + $c.cmd 
+          $missingCommands++
+        }
+      }
+      
+      if ($missingCommands -gt 0) {
+        $res.status = "warning"
+      }
+
+      ($res | ConvertTo-Json -Depth 6) | Set-Content -Path $out -Encoding UTF8 -ErrorAction Stop
+      Write-Host "Wrote $out" -ForegroundColor Green
+      
+      # Summary
+      $statusColor = if ($res.status -eq "healthy") { "Green" } else { "Yellow" }
+      Write-Host "Health status: $($res.status.ToUpper())" -ForegroundColor $statusColor
+      if ($res.advice.Count -gt 0) {
+        Write-Host "$($res.advice.Count) recommendation(s) in report" -ForegroundColor Yellow
+      }
+    } catch {
+      Write-Warning "Health check failed: $_"
+      throw
+    }
   }
 }
 Export-ModuleMember -Function Register-Plugin

@@ -3,24 +3,48 @@ param()
 
 function Register-Plugin {
   param($Context, $BuildRoot)
+  Import-Module (Join-Path $BuildRoot "plugins\Common\Plugin.Interfaces.psm1") -Force
 
   function Expand-Env([string]$s) { [Environment]::ExpandEnvironmentVariables($s) }
   function Ensure-VaultPath([string]$p) {
-    $full = Expand-Env $p
-    $dir = Split-Path -Parent $full
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    if (-not (Test-Path $full)) { '{}' | Set-Content -Path $full -Encoding UTF8 }
-    return $full
+    try {
+      $full = Expand-Env $p
+      $dir = Split-Path -Parent $full
+      if (-not (Test-Path $dir)) { 
+        New-Item -ItemType Directory -Force -Path $dir -ErrorAction Stop | Out-Null 
+      }
+      if (-not (Test-Path $full)) { 
+        '{}' | Set-Content -Path $full -Encoding UTF8 -ErrorAction Stop
+      }
+      return $full
+    } catch {
+      Write-Warning "Failed to ensure vault path ${p}: $_"
+      throw
+    }
   }
   function Load-Vault() {
-    $path = Ensure-VaultPath $Context.Secrets.VaultPath
-    $json = Get-Content -Path $path -Raw -Encoding UTF8
-    return ($json | ConvertFrom-Json)
+    try {
+      $path = Ensure-VaultPath $Context.Secrets.VaultPath
+      Lock-ResourceFile -ResourceName "Secrets.Vault" -ScriptBlock {
+        $json = Get-Content -Path $path -Raw -Encoding UTF8 -ErrorAction Stop
+        return ($json | ConvertFrom-Json -ErrorAction Stop)
+      }
+    } catch {
+      Write-Warning "Failed to load vault: $_"
+      throw
+    }
   }
   function Save-Vault($obj) {
-    $path = Expand-Env $Context.Secrets.VaultPath
-    ($obj | ConvertTo-Json -Depth 4) | Set-Content -Path $path -Encoding UTF8
-    Write-Host "Saved vault: $path" -ForegroundColor Green
+    try {
+      $path = Expand-Env $Context.Secrets.VaultPath
+      Lock-ResourceFile -ResourceName "Secrets.Vault" -ScriptBlock {
+        ($obj | ConvertTo-Json -Depth 4) | Set-Content -Path $path -Encoding UTF8 -ErrorAction Stop
+        Write-Host "Saved vault: $path" -ForegroundColor Green
+      }
+    } catch {
+      Write-Warning "Failed to save vault: $_"
+      throw
+    }
   }
   function Protect-String([string]$s) {
     $bytes = [Text.Encoding]::UTF8.GetBytes($s)
@@ -42,43 +66,89 @@ function Register-Plugin {
 
   task Secrets.Set {
     param([string]$Name)
-    if (-not $Name) { $Name = Read-Host "Secret name" }
-    $raw = Read-Host "Secret value (input hidden)" -AsSecureString
-    $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($raw)
-    try { $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
-    $v = Load-Vault
-    $v | Add-Member -NotePropertyName $Name -NotePropertyValue (Protect-String $plain) -Force
-    Save-Vault $v
+    try {
+      if (-not $Name) { $Name = Read-Host "Secret name" }
+      if ([string]::IsNullOrWhiteSpace($Name)) {
+        Write-Warning "Secret name cannot be empty"
+        return
+      }
+      
+      $raw = Read-Host "Secret value (input hidden)" -AsSecureString
+      $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($raw)
+      try { 
+        $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) 
+      } finally { 
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) 
+      }
+      
+      if ([string]::IsNullOrWhiteSpace($plain)) {
+        Write-Warning "Secret value cannot be empty"
+        return
+      }
+      
+      $v = Load-Vault
+      $v | Add-Member -NotePropertyName $Name -NotePropertyValue (Protect-String $plain) -Force
+      Save-Vault $v
+      Write-Host "Secret '$Name' saved successfully" -ForegroundColor Green
+    } catch {
+      Write-Warning "Failed to set secret: $_"
+    }
   }
 
   task Secrets.Get {
     param([string]$Name)
-    if (-not $Name) { $Name = Read-Host "Secret name" }
-    $v = Load-Vault
-    if (-not $v.PSObject.Properties.Name -contains $Name) { Write-Warning "Not found: $Name"; return }
-    $plain = Unprotect-String $v.$Name
-    # Do NOT print by default; set to clipboard
-    if ($plain) {
-      Set-Clipboard -Value $plain
-      Write-Host "Secret copied to clipboard." -ForegroundColor Green
-    } else {
-      Write-Warning "Failed to decrypt."
+    try {
+      if (-not $Name) { $Name = Read-Host "Secret name" }
+      if ([string]::IsNullOrWhiteSpace($Name)) {
+        Write-Warning "Secret name cannot be empty"
+        return
+      }
+      
+      $v = Load-Vault
+      if (-not $v.PSObject.Properties.Name -contains $Name) { 
+        Write-Warning "Not found: $Name"
+        return 
+      }
+      
+      $plain = Unprotect-String $v.$Name
+      # Do NOT print by default; set to clipboard
+      if ($plain) {
+        Set-Clipboard -Value $plain
+        Write-Host "Secret copied to clipboard." -ForegroundColor Green
+      } else {
+        Write-Warning "Failed to decrypt secret '$Name'"
+      }
+    } catch {
+      Write-Warning "Failed to get secret: $_"
     }
   }
 
   task Secrets.ExportEnv {
-    # Export mapped env vars for this session
-    $v = Load-Vault
-    foreach ($pair in $Context.Secrets.EnvMap.GetEnumerator()) {
-      $envName = $pair.Key
-      $secretName = $pair.Value
-      if ($v.PSObject.Properties.Name -contains $secretName) {
-        $val = Unprotect-String $v.$secretName
-        if ($val) {
-          $env:$envName = $val
-          Write-Host "Set $envName" -ForegroundColor Green
+    try {
+      # Export mapped env vars for this session
+      $v = Load-Vault
+      $exported = 0
+      
+      foreach ($pair in $Context.Secrets.EnvMap.GetEnumerator()) {
+        $envName = $pair.Key
+        $secretName = $pair.Value
+        if ($v.PSObject.Properties.Name -contains $secretName) {
+          $val = Unprotect-String $v.$secretName
+          if ($val) {
+            $env:$envName = $val
+            Write-Host "Set $envName" -ForegroundColor Green
+            $exported++
+          } else {
+            Write-Warning "Failed to decrypt secret '$secretName' for env var '$envName'"
+          }
+        } else {
+          Write-Verbose "Secret '$secretName' not found in vault for env var '$envName'"
         }
       }
+      
+      Write-Host "Exported $exported environment variables" -ForegroundColor Green
+    } catch {
+      Write-Warning "Failed to export environment variables: $_"
     }
   }
 }
