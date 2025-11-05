@@ -1,0 +1,47 @@
+name: CI
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup PowerShell 7.x
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x' # placeholder to prime PATH; pwsh is available on windows-latest
+      - name: Install tooling
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          Install-Module InvokeBuild -Scope CurrentUser -Force
+      - name: Lint PowerShell
+        shell: pwsh
+        run: |
+          Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning,Error -ExcludeRule PSAvoidUsingWriteHost | Tee-Object -Variable LintOut
+          if ($LintOut | Where-Object { $_.Severity -eq 'Error' }) { exit 1 }
+      - name: Package module
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path 'module/CliStack.psd1')) { Write-Host "Module manifest missing, skipping package."; exit 0 }
+          $version = (Import-PowerShellDataFile module/CliStack.psd1).ModuleVersion
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Compress-Archive -Path module/* -DestinationPath "dist/cli_stack_${version}.zip" -Force
+      - name: Optional code signing
+        if: ${{ env.CODE_SIGN_CERT_BASE64 != '' && env.CODE_SIGN_CERT_PASSWORD != '' }}
+        shell: pwsh
+        env:
+          CODE_SIGN_CERT_BASE64: ${{ secrets.CODE_SIGN_CERT_BASE64 }}
+          CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
+        run: |
+          pwsh -File scripts/Sign-Files.ps1 -Paths @('module/CliStack.psm1','module/CliStack.psd1','scripts/installer/Install-CliStack.ps1')
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/**
