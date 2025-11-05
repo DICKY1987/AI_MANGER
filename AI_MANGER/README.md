@@ -15,11 +15,23 @@ Invoke-Build -File .\build.ps1 Verify     # check versions
 Invoke-Build -File .\build.ps1 WatcherWatch  # start real-time watcher
 ```
 
+## Architecture
+
+**New in v2.0**: This project now features a hardened architecture with:
+- ✅ Standardized logging with configurable levels
+- ✅ Consistent error handling with standard exit codes
+- ✅ Idempotency support (tasks can run multiple times safely)
+- ✅ Dry-run mode for testing without side effects
+- ✅ JSON schema validation for configuration
+- ✅ Cross-platform support (Windows/Linux/macOS)
+
+See [Architecture Hardening Guide](docs/ArchitectureHardening.md) for details.
+
 ## Customize
 - Edit `config\toolstack.config.json` for paths and package lists.
 - Add plugins in `plugins\<Name>\Plugin.psm1`; implement `Register-Plugin` and call `task ... {}`.
 - Helper scripts live in `scripts\` (already included).
-
+- Configuration is validated against JSON schema in `config\toolstack.schema.json`.
 
 ## New plugins & tasks
 
