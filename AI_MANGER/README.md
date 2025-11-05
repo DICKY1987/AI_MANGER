@@ -71,3 +71,35 @@ Quick environment sanity check -> JSON report.
 ```powershell
 Invoke-Build -File .\build.ps1 Health.Check   # writes health.json
 ```
+
+### Observability
+Comprehensive observability and maintenance capabilities including log rotation, diagnostics bundles, and periodic health scans.
+```powershell
+# Rotate JSONL logs when they exceed size limits
+Invoke-Build -File .\build.ps1 Observability.RotateLogs
+
+# Generate redaction-safe diagnostics bundle
+Invoke-Build -File .\build.ps1 Observability.Diagnostics  # creates diagnostics-{timestamp}.json
+
+# Install periodic health scan (scheduled task)
+Invoke-Build -File .\build.ps1 Observability.InstallHealthScan
+
+# Remove periodic health scan
+Invoke-Build -File .\build.ps1 Observability.RemoveHealthScan
+
+# Telemetry hook (placeholder for future integration)
+Invoke-Build -File .\build.ps1 Observability.Telemetry
+```
+
+**Diagnostics Bundle Contents:**
+- System information (hostname, OS, PowerShell version)
+- Environment variables (redacted)
+- Health check results
+- Configuration (with sensitive data redacted)
+- Recent audit log entries (sample)
+
+**Log Rotation Settings** (in `config\toolstack.config.json`):
+- Configure in `Observability.LogFiles` array
+- Set `MaxSizeMB` and `MaxFiles` per log file
+- Audit logs automatically included if configured
+
