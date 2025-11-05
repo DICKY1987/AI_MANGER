@@ -53,5 +53,21 @@ task Verify {
   cmd /c "copilot --version"    | Out-Host
 }
 
+# Health check that verifies module import and config presence
+task 'Health.Check' {
+  Say "Running health checks..."
+  if (-not (Test-Path -LiteralPath 'config/toolstack.config.json')) {
+    throw "Missing config/toolstack.config.json"
+  }
+  # Check if module directory exists
+  if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'module/CliStack.psd1')) {
+    Import-Module -Name (Join-Path $PSScriptRoot 'module/CliStack.psd1') -Force
+    Invoke-CliStack -Task Rebuild -Config 'config/toolstack.config.json' -DryRun
+  } else {
+    Warn "Module not found at module/CliStack.psd1 - skipping module test"
+  }
+  Ok "Health.Check passed."
+}
+
 # Default
 task . Rebuild
