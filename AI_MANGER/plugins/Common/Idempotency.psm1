@@ -165,6 +165,9 @@ function Test-PackageInstalled {
     <#
     .SYNOPSIS
     Check if a package is already installed
+    .DESCRIPTION
+    Validates package name and checks installation status.
+    Package names are validated to prevent command injection.
     #>
     param(
         [Parameter(Mandatory)]
@@ -176,6 +179,12 @@ function Test-PackageInstalled {
         
         [string]$Version = $null
     )
+    
+    # Validate package name to prevent injection
+    if ($PackageName -notmatch '^[@a-zA-Z0-9/\-_.]+$') {
+        Write-LogWarning "Invalid package name format: $PackageName"
+        return $false
+    }
     
     Write-LogDebug "Checking if $PackageName is installed via $Manager"
     
@@ -190,9 +199,13 @@ function Test-PackageInstalled {
                 $installed = $result -match [regex]::Escape($PackageName)
                 
                 if ($installed -and $Version) {
-                    # Check version if specified
-                    $versionLine = $result | Where-Object { $_ -match [regex]::Escape($PackageName) }
-                    $installed = $versionLine -match [regex]::Escape($Version)
+                    # Check version if specified (validate version format)
+                    if ($Version -match '^[0-9.]+$') {
+                        $versionLine = $result | Where-Object { $_ -match [regex]::Escape($PackageName) }
+                        $installed = $versionLine -match [regex]::Escape($Version)
+                    } else {
+                        Write-LogWarning "Invalid version format: $Version"
+                    }
                 }
                 
                 return $installed
@@ -203,6 +216,7 @@ function Test-PackageInstalled {
         }
         "npm" {
             try {
+                # Use npm list with validated package name
                 if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
                     $result = cmd /c "npm list -g $PackageName --depth=0" 2>&1
                     $installed = $LASTEXITCODE -eq 0
@@ -212,7 +226,12 @@ function Test-PackageInstalled {
                 }
                 
                 if ($installed -and $Version) {
-                    $installed = $result -match [regex]::Escape($Version)
+                    # Validate version format
+                    if ($Version -match '^[0-9.]+$') {
+                        $installed = $result -match [regex]::Escape($Version)
+                    } else {
+                        Write-LogWarning "Invalid version format: $Version"
+                    }
                 }
                 
                 return $installed

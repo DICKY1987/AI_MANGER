@@ -33,6 +33,13 @@ function Register-Plugin {
     
     # Configure npm prefix
     Write-LogInfo "Configuring npm prefix: $prefix"
+    
+    # Validate prefix path to prevent injection
+    if ($prefix -notmatch '^[a-zA-Z0-9\\/:\-_\. ]+$') {
+      Write-LogError "Invalid prefix path format: $prefix"
+      throw "Invalid configuration: ToolsRoot contains invalid characters"
+    }
+    
     Invoke-SafeCommand -Command "npm config set prefix `"$prefix`" --global" -DryRun:$isDryRun -ErrorMessage "Failed to set npm prefix"
     
     # Install pnpm
@@ -47,6 +54,12 @@ function Register-Plugin {
     # Install packages
     foreach ($pkg in @($Context.NpmGlobal)) {
       Write-LogInfo "Installing npm package: $pkg"
+      
+      # Validate package name to prevent injection
+      if ($pkg -notmatch '^[@a-zA-Z0-9/\-_.]+$') {
+        Write-LogWarning "Invalid package name format, skipping: $pkg"
+        continue
+      }
       
       # Check if already installed (idempotency)
       if (Test-PackageInstalled -PackageName $pkg -Manager "npm") {

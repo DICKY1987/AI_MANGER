@@ -53,6 +53,12 @@ function Register-Plugin {
     foreach ($a in $apps) {
       Write-LogInfo "Installing pipx package: $a"
       
+      # Validate package name to prevent injection
+      if ($a -notmatch '^[@a-zA-Z0-9/\-_.]+$') {
+        Write-LogWarning "Invalid package name format, skipping: $a"
+        continue
+      }
+      
       # Check if already installed (idempotency)
       if (Test-PackageInstalled -PackageName $a -Manager "pipx") {
         Write-LogDebug "Package $a is already installed"

@@ -37,7 +37,13 @@ function Invoke-SafeCommand {
     .SYNOPSIS
     Execute command with error handling and logging
     .DESCRIPTION
-    Executes a command and handles errors gracefully with proper logging
+    Executes a command and handles errors gracefully with proper logging.
+    
+    SECURITY NOTE: This function executes commands via shell which can be vulnerable
+    to command injection. For production use with untrusted input, use Invoke-SecureCommand
+    from Security.psm1 instead, which uses Start-Process with argument arrays.
+    
+    This function is maintained for backward compatibility with existing plugins.
     #>
     param(
         [Parameter(Mandatory)]
@@ -61,6 +67,8 @@ function Invoke-SafeCommand {
         $global:LASTEXITCODE = 0
         
         # Cross-platform command execution
+        # WARNING: This uses shell execution which may be vulnerable to injection
+        # For untrusted input, use Invoke-SecureCommand instead
         if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
             $output = cmd /c $Command 2>&1
         } else {

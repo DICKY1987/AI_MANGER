@@ -115,8 +115,15 @@ try {
 # Test 6: Plugin interfaces
 Write-Host "[6/6] Testing plugin interfaces..." -ForegroundColor Yellow
 try {
+    # Use platform-appropriate path
+    $toolsRoot = if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) { 
+        "C:\Tools" 
+    } else { 
+        "/opt/tools" 
+    }
+    
     $testContext = @{
-        ToolsRoot = "C:\Tools"
+        ToolsRoot = $toolsRoot
         logging = @{
             level = "info"
         }

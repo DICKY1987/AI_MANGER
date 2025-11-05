@@ -9,6 +9,17 @@ Import-Module (Join-Path $commonDir "Idempotency.psm1") -Force -Global
 
 # Legacy helper: Invoke-Quiet (preserved for backwards compatibility)
 function Invoke-Quiet {
+  <#
+  .SYNOPSIS
+  Execute command with simple error handling
+  
+  .DESCRIPTION
+  SECURITY NOTE: This function uses shell execution which may be vulnerable
+  to command injection. For production use with untrusted input, validate
+  all inputs or use Invoke-SecureCommand from Security.psm1.
+  
+  This function is maintained for backward compatibility with existing plugins.
+  #>
   param(
     [Parameter(Mandatory)]
     [string]$Command,
@@ -25,6 +36,7 @@ function Invoke-Quiet {
     $global:LASTEXITCODE = 0
     
     # Cross-platform command execution
+    # WARNING: Uses shell execution - validate inputs before calling
     if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
       cmd /c $Command | Out-Host
     } else {
