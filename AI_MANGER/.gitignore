@@ -1,0 +1,13 @@
+# Build artifacts
+dist/
+*.zip
+
+# PowerShell
+*.ps1.backup
+
+# Reports
+reports/
+
+# Temp files
+*.tmp
+*.temp

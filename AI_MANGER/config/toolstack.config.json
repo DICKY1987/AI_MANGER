@@ -1,4 +1,10 @@
 {
+  "reportsDir": "reports",
+  "logging": { "level": "info" },
+  "tasks": {
+    "bootstrap": { "enabled": true },
+    "watch": { "enabled": false }
+  },
   "ToolsRoot": "C:\\Tools",
   "PipxApps": [
     "invoke",

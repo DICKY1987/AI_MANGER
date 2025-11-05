@@ -1,0 +1,48 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: AI_MANGER
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tooling
+        shell: pwsh
+        run: |
+          Install-Module InvokeBuild -Scope CurrentUser -Force
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+      - name: Build ZIP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Import-PowerShellDataFile module/CliStack.psd1).ModuleVersion
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Compress-Archive -Path module/* -DestinationPath "dist/cli_stack_${version}.zip" -Force
+      - name: Optional code signing
+        if: ${{ env.CODE_SIGN_CERT_BASE64 != '' && env.CODE_SIGN_CERT_PASSWORD != '' }}
+        shell: pwsh
+        env:
+          CODE_SIGN_CERT_BASE64: ${{ secrets.CODE_SIGN_CERT_BASE64 }}
+          CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
+        run: |
+          pwsh -File scripts/Sign-Files.ps1 -Paths @('module/CliStack.psm1','module/CliStack.psd1','scripts/Install-CliStack.ps1')
+      - name: Generate release notes (placeholder)
+        id: notes
+        shell: pwsh
+        run: |
+          '"Auto-generated notes (placeholder). Replace with conventional commits if desired."' | Out-File -FilePath NOTES.txt -Encoding utf8
+      - name: Upload release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            AI_MANGER/dist/*.zip
+          body_path: AI_MANGER/NOTES.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
