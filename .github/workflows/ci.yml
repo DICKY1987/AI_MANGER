@@ -7,6 +7,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: AI_MANGER
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,9 +42,9 @@ jobs:
           CODE_SIGN_CERT_BASE64: ${{ secrets.CODE_SIGN_CERT_BASE64 }}
           CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
         run: |
-          pwsh -File scripts/Sign-Files.ps1 -Paths @('module/CliStack.psm1','module/CliStack.psd1','scripts/installer/Install-CliStack.ps1')
+          pwsh -File scripts/Sign-Files.ps1 -Paths @('module/CliStack.psm1','module/CliStack.psd1','scripts/Install-CliStack.ps1')
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist/**
+          path: AI_MANGER/dist/**

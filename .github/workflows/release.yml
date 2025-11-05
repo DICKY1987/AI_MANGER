@@ -6,6 +6,9 @@ on:
 jobs:
   release:
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: AI_MANGER
     steps:
       - uses: actions/checkout@v4
       - name: Install tooling
@@ -27,7 +30,7 @@ jobs:
           CODE_SIGN_CERT_BASE64: ${{ secrets.CODE_SIGN_CERT_BASE64 }}
           CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
         run: |
-          pwsh -File scripts/Sign-Files.ps1 -Paths @('module/CliStack.psm1','module/CliStack.psd1','scripts/installer/Install-CliStack.ps1')
+          pwsh -File scripts/Sign-Files.ps1 -Paths @('module/CliStack.psm1','module/CliStack.psd1','scripts/Install-CliStack.ps1')
       - name: Generate release notes (placeholder)
         id: notes
         shell: pwsh
@@ -37,7 +40,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.zip
-          body_path: NOTES.txt
+            AI_MANGER/dist/*.zip
+          body_path: AI_MANGER/NOTES.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

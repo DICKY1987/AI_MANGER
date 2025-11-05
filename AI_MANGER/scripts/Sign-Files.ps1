@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [string[]]$Paths = @('module/CliStack.psm1','module/CliStack.psd1','scripts/installer/Install-CliStack.ps1'),
+  [string[]]$Paths = @('module/CliStack.psm1','module/CliStack.psd1','scripts/Install-CliStack.ps1'),
   [string]$CertBase64 = $env:CODE_SIGN_CERT_BASE64,
   [string]$CertPassword = $env:CODE_SIGN_CERT_PASSWORD
 )
