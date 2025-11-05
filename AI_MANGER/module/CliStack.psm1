@@ -12,7 +12,7 @@ function Ensure-InvokeBuild {
             throw "Failed to install InvokeBuild: $($_.Exception.Message)"
         }
     }
-    Import-Module InvokeBuild -ErrorAction Stop | Out-Null
+    Import-Module InvokeBuild -ErrorAction Stop
 }
 function Invoke-CliStack {
     [CmdletBinding()]
