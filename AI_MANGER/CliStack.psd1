@@ -1,0 +1,1 @@
+@{ RootModule='CliStack.psm1'; ModuleVersion='0.1.0'; PowerShellVersion='7.0' }

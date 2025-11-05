@@ -1,0 +1,291 @@
+end-to-end plan to take your InvokeBuild-based stack from “working scaffold” to **production-ready**, with clear milestones, acceptance criteria
+
+# Milestones & Deliverables
+
+1. **Architecture hardening (M1)**
+
+* Finalize config contract & schema.
+* Normalize logging, error model, return codes.
+* Idempotency policy across all tasks.
+
+2. **Module hardening (M2)**
+
+* Centralize, Enforcer, MasterBin, Pinning, Update, Scanner, Secrets, HealthCheck, AuditAlert tightened with tests.
+* Robust cross-volume linking & fallbacks.
+
+3. **Quality gates (M3)**
+
+* Lint (PSScriptAnalyzer), Format (PSStyle), Security (bandit-style checks for PS), Pester test pyramid (unit/integration/E2E).
+
+4. **Packaging & install (M4)**
+
+* PowerShell module packaging (+ manifest), signed scripts, versioning, offline ZIP, installer script.
+
+5. **CI/CD & releases (M5)**
+
+* GitHub Actions: build, test, sign, release notes, artifacts; scheduled Update.Check + auto-PR.
+
+6. **Ops docs & runbooks (M6)**
+
+* Operator Runbook, Config Reference, Troubleshooting, Security Guide, Upgrade/Migration/Uninstall.
+
+7. **Observability & maintenance (M7)**
+
+* JSONL logs + rotation, diagnostics bundle, periodic health scan, audit alert tuning.
+
+---
+
+# M1. Architecture hardening
+
+## A. Config contract & schema
+
+* **Single source**: `config/toolstack.config.json`.
+* **JSON Schema**: `config/toolstack.schema.json` with strict types, enums for task names, and path validations.
+* **Validate-on-load**: add `Config.Validate` task (fail fast with clear error list).
+* **Defaults layer**: internal defaults + user overrides; render effective config to `Reports.Dir/effective_config.json`.
+
+**Acceptance**
+
+* Invalid config fails within 1s with actionable messages.
+* `effective_config.json` emitted by every aggregate task.
+
+## B. Logging & error model
+
+* **Uniform JSON logs** under `%LOCALAPPDATA%\CLI_Reports\logs\*.jsonl`.
+* Include: `ts`, `task`, `level`, `msg`, `elapsed_ms`, `host`, `username`, `corr_id` (GUID).
+* **Return codes**: `0` success; `20x` handled partials; `50x` hard failures.
+* `--Verbose`/`--Debug` toggles: increase detail; **never** print secrets.
+
+**Acceptance**
+
+* Every task emits at least start/finish + duration JSON lines.
+* Failures include `error.code` and `error.data` (command, args, exit code).
+
+## C. Idempotency & dry-run
+
+* Add `-DryRun` to every mutating task (no side effects; print plan).
+* Re-entrancy: safe to run same task repeatedly (no duplicate links/wrappers/scheduled tasks).
+
+**Acceptance**
+
+* `Invoke-Build Enforce.Once -DryRun` shows actions; second run with no changes emits “no-op”.
+
+---
+
+# M2. Module hardening
+
+## CentralizeConfig
+
+* Verify XDG + cache envs set at **User** scope; warn if Machine scope conflicts.
+* Add “**doctor**” subtask that detects conflicting envs and PATH entries.
+
+**DoD**
+
+* `CentralizeApply` re-runs without churn; `Doctor` reports zero issues on a correct machine.
+
+## Enforcer (ConfigCache_Enforcer)
+
+* Cross-volume: prefer **symlink**; fallback to **junction**; **copy** (last resort) with warning + auto-ticket JSON.
+* Race safety: handle inotify-like bursts; debounce 500ms.
+* Quarantine TTL & rotation (e.g., 7/30 days); `Quarantine.Purge`.
+
+**DoD**
+
+* E2E test creates `.ruff_cache` in a temp project; ends as link; quarantine holds original; re-run is no-op.
+
+## MasterBin
+
+* Collision resolution: priority + denylist + **collision report** emitted to JSON.
+* Wrapper arg-quoting & exit code propagation tests.
+* Option to generate **.ps1 shims** for PowerShell and `.cmd` for cmd.exe.
+
+**DoD**
+
+* `MasterBin.Rebuild` builds deterministic set; `where <tool>` points to wrapper; exit codes bubble correctly.
+
+## Pinning
+
+* Pin report: include `source`, `installed`, `wanted`, `latest`, `action`.
+* `Pin.DriftFail` task → fails build if any drift (for CI).
+* Optional: “**lockfile**” `pins.lock.json` generated from current system.
+
+**DoD**
+
+* Changing a pin triggers `Pin.Sync` to converge; `Pin.DriftFail` fails when out of sync.
+
+## Update
+
+* `Update.Check` supports **allow/deny** lists & **max major** policy (avoid breaking upgrades).
+* `Update.All` respects pin policy (skip pinned or propose PR to bump pins).
+
+**DoD**
+
+* `updates.json` lists only actionable items and complies with policy.
+
+## Scanner
+
+* Duplicate hashing tuned (`MinSizeKBForHash`, skip node_modules by default except `.cache`).
+* “**Fix-it**” mode: propose move/link actions but do nothing unless `-Apply`.
+
+**DoD**
+
+* `Scan.Report` runs < 60s on large trees or streams progress and lets you set a max depth.
+
+## Secrets (DPAPI vault)
+
+* **Key rotation** (rename secret → re-encrypt new value, keep old alias for 7 days).
+* **Export profiles**: `Secrets.ExportEnv -Profile build|dev|prod` controls which env vars export.
+* Optional backend adapters (later): PowerShell SecretManagement / Windows CredMan.
+
+**DoD**
+
+* Vault re-encryption works; `Secrets.ExportEnv` never echoes values; logs show only key names.
+
+## HealthCheck
+
+* PATH order, required dirs, tool resolution, config sanity, scheduled task presence, symlink capability.
+* Emit `health.json` with **severity** and **fix advice** codes (“HC001: PATH order wrong”).
+
+**DoD**
+
+* On broken PATH, HealthCheck emits advice and non-zero exit (configurable).
+
+## AuditAlert
+
+* Strict XML query to reduce noise; **throttle** actions to 1/min per path.
+* Alert writer: JSONL rotate by size/date; optional toast dependency detection.
+* `Audit.TestEvent` creates a real Security event via file operation (when auditing enabled).
+
+**DoD**
+
+* Task registers under non-admin user; event triggers JSONL write; removal cleans up fully.
+
+---
+
+# M3. Quality gates
+
+## Static analysis & formatting
+
+* **PSScriptAnalyzer** with custom ruleset (no unbounded `Write-Host`, no unhandled `$LASTEXITCODE`, no plaintext secrets).
+* Enforce LF line endings, UTF-8-BOM off; `.editorconfig` added.
+
+## Testing with Pester
+
+* **Unit**: pure functions (parsing, version compare, path order).
+* **Integration**: filesystem ops in temp sandbox (symlink/junction, wrappers, quarantine).
+* **E2E**: full `Bootstrap → Enforce.Once → Health.Check` on a temp workspace.
+
+Add `InvokeBuild` tasks:
+
+* `Lint` → PSScriptAnalyzer
+* `Test.Unit`, `Test.Integration`, `Test.E2E`
+* Aggregate `CI` → `Lint, Test.Unit, Test.Integration, Test.E2E`
+
+**Acceptance**
+
+* All tests green on Windows-latest with PS 7.4+.
+
+---
+
+# M4. Packaging & install
+
+## PowerShell module packaging
+
+* Convert `plugins/*` into submodules or keep as files but include a top-level module: `CliStack.psd1/psm1`.
+* Expose entrypoints: `Invoke-CliStack -Task Rebuild -Config <path>`.
+* Script signing: create **Code Signing** cert or use enterprise cert; sign all `.ps1` and `.psm1`.
+
+## Distributables
+
+* **ZIP**: `dist/cli_stack_<version>.zip` (module + scripts + config + schema + samples).
+* **Installer script**: `Install-CliStack.ps1` (idempotent, sets PATH, installs InvokeBuild if missing, imports module, runs HealthCheck).
+
+**Acceptance**
+
+* Fresh machine: a single `iex (irm <raw-url>)` installs and passes `Health.Check`.
+
+---
+
+# M5. CI/CD & releases
+
+## GitHub Actions (Windows)
+
+* `ci.yml`:
+
+  * checkout, setup PowerShell 7, cache modules, `Invoke-Build CI`.
+  * Upload `Reports` and `TestResults` as artifacts.
+* `release.yml`:
+
+  * On tag: run CI, sign scripts, build ZIP & module, generate release notes (conventional commits), publish artifacts.
+* `weekly_update.yml` (Scheduled):
+
+  * Run `Update.Check`; if deltas and within policy, open PR updating `updates.json` and (optionally) pins.
+
+**Acceptance**
+
+* On push to `main`: CI green; on tag `vX.Y.Z`: signed release attached.
+
+---
+
+# M6. Operational docs
+
+* **Operator Runbook**: install, bootstrap, routine tasks, incident handling (audit storms, broken links), backup/restore of vault.
+* **Config Reference**: every key + examples; link to JSON Schema.
+* **Troubleshooting**: common errors (symlink denied, PATH collisions, npm prefix mismatch), with fixes.
+* **Security Guide**: DPAPI model, least privilege, ACL templates for `C:\Tools\*`, when to use NTFS deny, log retention.
+
+**Acceptance**
+
+* A new operator can stabilize a noisy machine in <30 minutes using docs.
+
+---
+
+# M7. Observability & maintenance
+
+* **Rotation**: daily or size-based rotation for `*.jsonl`, keep 14–30 days.
+* **Diagnostics bundle**: `Support.Bundle` task zips logs, health.json, updates.json, misplaced/duplicates, and effective_config.json.
+* **Telemetry hooks** (optional): simple “sink” function to forward JSON lines to a local ELK/seq if configured.
+
+**Acceptance**
+
+* `Support.Bundle` produces a redaction-safe archive in one command.
+
+---
+
+# InvokeBuild task map (final)
+
+```
+Config.Validate
+Doctor
+
+Bootstrap            := PipxInstall, NpmInstall, CentralizeApply, Pin.Sync?
+Rebuild              := Bootstrap, Enforce.Once, Health.Check, Update.Check, Scan.Report, Audit.InstallAlerts?
+Watch                := Watcher.Watch
+
+Pin.Report, Pin.Sync, Pin.DriftFail
+Update.Check, Update.All
+Scan.Misplaced, Scan.Duplicates, Scan.Report
+Secrets.Set, Secrets.List, Secrets.Get, Secrets.ExportEnv
+Health.Check
+MasterBin.Rebuild, MasterBin.Clean
+Audit.InstallAlerts, Audit.RemoveAlerts, Audit.TestAlert
+Quarantine.Purge
+Support.Bundle
+
+Lint, Test.Unit, Test.Integration, Test.E2E, CI
+Package.Zip, Package.Module, Sign.All, Release.Draft
+```
+
+---
+
+# Definitions of Done (summary checklist)
+
+* ✅ **Determinism**: pins enforced; drift detected; lockfile optional.
+* ✅ **Idempotency**: all tasks are safe to re-run; `-DryRun` available.
+* ✅ **Security**: secrets only via DPAPI; no echo; logs redacted; ACLs documented; audit noise controlled.
+* ✅ **Reliability**: cross-volume links; quarantine TTL; collision handling; error codes.
+* ✅ **Quality**: PSScriptAnalyzer clean; Pester test pyramid green.
+* ✅ **Ops-ready**: signed packages, installer script, CI releases, operator docs.
+* ✅ **Observability**: JSONL logs, health/updates/scan reports, diagnostics bundle.
+
+If you want, I can generate the JSON Schema, the `Config.Validate` task, and a starter `ci.yml` + `release.yml` next so you can commit and run CI on your repo immediately.

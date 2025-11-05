@@ -1,0 +1,44 @@
+modular_cli_stack/
+├─ build.ps1
+├─ CliStack.psd1
+├─ CliStack.psm1
+├─ config/
+│  ├─ toolstack.config.json
+│  └─ toolstack.schema.json
+├─ plugins/
+│  ├─ Common/
+│  │  ├─ Plugin.psm1
+│  │  └─ Plugin.Interfaces.psm1
+│  ├─ CentralizeConfig/Plugin.psm1
+│  ├─ Watcher/Plugin.psm1
+│  ├─ MasterBin/Plugin.psm1
+│  ├─ Pinning/Plugin.psm1
+│  ├─ Update/Plugin.psm1
+│  ├─ Scanner/Plugin.psm1
+│  ├─ Secrets/Plugin.psm1
+│  ├─ HealthCheck/Plugin.psm1
+│  └─ AuditAlert/Plugin.psm1
+├─ scripts/
+│  ├─ centralize_cli_config.ps1
+│  ├─ ConfigCache_Enforcer.ps1
+│  └─ installer/Install-CliStack.ps1
+├─ docs/
+│  ├─ Runbook.md
+│  ├─ ConfigReference.md
+│  ├─ Troubleshooting.md
+│  └─ SecurityGuide.md
+├─ tests/
+│  ├─ Unit/Common.Tests.ps1
+│  ├─ Integration/MasterBin.Tests.ps1
+│  └─ E2E/Bootstrap.Tests.ps1
+├─ .github/workflows/
+│  ├─ ci.yml
+│  ├─ release.yml
+│  └─ weekly_update.yml
+├─ reports/           # JSON outputs (health, updates, scans)
+├─ logs/              # JSONL logs (rotate/collect later)
+├─ dist/              # release artifacts
+├─ .runs/             # run ledgers (future)
+├─ .gitignore
+├─ .editorconfig
+└─ .gitattributes
