@@ -28,6 +28,7 @@ function Invoke-CliStack {
         [switch]$DebugLog
     )
     Ensure-InvokeBuild
+    # Note: Using null-coalescing operator (??) which requires PowerShell 7.0+
     $env:CLISTACK_EFFECTIVE_CONFIG = (Resolve-Path -LiteralPath $Config -ErrorAction SilentlyContinue) ?? $Config
     $ibArgs = @($Task)
     if ($VerboseLog) { $ibArgs += '--' ; $ibArgs += '-Verbose' }
