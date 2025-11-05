@@ -181,26 +181,45 @@ function Test-PackageInstalled {
     
     switch ($Manager) {
         "pipx" {
-            $result = cmd /c "pipx list" 2>&1
-            $installed = $result -match [regex]::Escape($PackageName)
-            
-            if ($installed -and $Version) {
-                # Check version if specified
-                $versionLine = $result | Where-Object { $_ -match [regex]::Escape($PackageName) }
-                $installed = $versionLine -match [regex]::Escape($Version)
+            try {
+                if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
+                    $result = cmd /c "pipx list" 2>&1
+                } else {
+                    $result = pipx list 2>&1
+                }
+                $installed = $result -match [regex]::Escape($PackageName)
+                
+                if ($installed -and $Version) {
+                    # Check version if specified
+                    $versionLine = $result | Where-Object { $_ -match [regex]::Escape($PackageName) }
+                    $installed = $versionLine -match [regex]::Escape($Version)
+                }
+                
+                return $installed
+            } catch {
+                Write-LogDebug "Error checking pipx package: $($_.Exception.Message)"
+                return $false
             }
-            
-            return $installed
         }
         "npm" {
-            $result = cmd /c "npm list -g $PackageName --depth=0" 2>&1
-            $installed = $LASTEXITCODE -eq 0
-            
-            if ($installed -and $Version) {
-                $installed = $result -match [regex]::Escape($Version)
+            try {
+                if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
+                    $result = cmd /c "npm list -g $PackageName --depth=0" 2>&1
+                    $installed = $LASTEXITCODE -eq 0
+                } else {
+                    $result = npm list -g $PackageName --depth=0 2>&1
+                    $installed = $LASTEXITCODE -eq 0
+                }
+                
+                if ($installed -and $Version) {
+                    $installed = $result -match [regex]::Escape($Version)
+                }
+                
+                return $installed
+            } catch {
+                Write-LogDebug "Error checking npm package: $($_.Exception.Message)"
+                return $false
             }
-            
-            return $installed
         }
     }
     

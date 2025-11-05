@@ -23,7 +23,15 @@ function Invoke-Quiet {
   try {
     Write-LogDebug "Executing: $Command"
     $global:LASTEXITCODE = 0
-    cmd /c $Command | Out-Host
+    
+    # Cross-platform command execution
+    if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
+      cmd /c $Command | Out-Host
+    } else {
+      # On Linux/macOS, use sh
+      sh -c $Command | Out-Host
+    }
+    
     if ($LASTEXITCODE -ne 0) { 
       throw "Command failed with exit code $LASTEXITCODE"
     }
@@ -66,7 +74,7 @@ function Initialize-PluginContext {
     "info" 
   }
   
-  $logFile = if ($Context.logging -and $Context.logging.logFile) {
+  $logFile = if ($Context.logging -and $Context.logging.ContainsKey('logFile') -and $Context.logging.logFile) {
     [Environment]::ExpandEnvironmentVariables($Context.logging.logFile)
   } else {
     $null

@@ -59,7 +59,15 @@ function Invoke-SafeCommand {
     
     try {
         $global:LASTEXITCODE = 0
-        $output = cmd /c $Command 2>&1
+        
+        # Cross-platform command execution
+        if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
+            $output = cmd /c $Command 2>&1
+        } else {
+            # On Linux/macOS, use sh
+            $output = sh -c $Command 2>&1
+        }
+        
         $exitCode = $LASTEXITCODE
         
         if ($exitCode -ne 0) {
