@@ -105,7 +105,7 @@ set "ESLINT_CACHE_LOCATION=%ESLINT_CACHE_LOCATION%"
               }
               
               try {
-                $body = $preamble + "`r`n" + "`"$target`" %*" + "`r`nexit /b %errorlevel%`r`n"
+                $body = $preamble + "`r`n`"$target`" %*`r`nexit /b %errorlevel%`r`n"
                 Set-Content -Path $wrapper -Value $body -Encoding ASCII -ErrorAction Stop
               } catch {
                 Write-Warning "Failed to create wrapper $wrapper : $_"
