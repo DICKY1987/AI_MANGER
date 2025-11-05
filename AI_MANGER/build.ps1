@@ -17,14 +17,16 @@ foreach ($dir in $PluginDirs) {
     $pluginFile = Join-Path $dir.FullName 'Plugin.psm1'
     if (Test-Path $pluginFile) {
         Write-Verbose "Loading plugin: $($dir.Name)"
-        Import-Module $pluginFile -Force -ErrorAction SilentlyContinue
-        try {
-            $registerFunc = Get-Command -Name 'Register-Plugin' -Module $dir.Name -ErrorAction SilentlyContinue
-            if ($registerFunc) {
-                & $registerFunc -Context $Context -BuildRoot $PSScriptRoot
+        $importedModule = Import-Module $pluginFile -Force -PassThru -ErrorAction SilentlyContinue
+        if ($importedModule) {
+            try {
+                $registerFunc = Get-Command -Name 'Register-Plugin' -Module $importedModule.Name -ErrorAction SilentlyContinue
+                if ($registerFunc) {
+                    & $registerFunc -Context $Context -BuildRoot $PSScriptRoot
+                }
+            } catch {
+                Write-Warning "Failed to register plugin $($dir.Name): $_"
             }
-        } catch {
-            Write-Warning "Failed to register plugin $($dir.Name): $_"
         }
     }
 }

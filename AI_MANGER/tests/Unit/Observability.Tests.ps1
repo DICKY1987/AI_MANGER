@@ -126,7 +126,7 @@ Describe 'Observability Plugin' {
             foreach ($testKey in $testKeys) {
                 $shouldBeRedacted = $false
                 foreach ($pattern in $sensitivePatterns) {
-                    if ($testKey.ToLower() -like "*$pattern*") {
+                    if ($testKey.ToLower().Contains($pattern.ToLower())) {
                         $shouldBeRedacted = $true
                         break
                     }
@@ -143,7 +143,7 @@ Describe 'Observability Plugin' {
             foreach ($safeKey in $safeKeys) {
                 $shouldBeRedacted = $false
                 foreach ($pattern in $sensitivePatterns) {
-                    if ($safeKey.ToLower() -like "*$pattern*") {
+                    if ($safeKey.ToLower().Contains($pattern.ToLower())) {
                         $shouldBeRedacted = $true
                         break
                     }

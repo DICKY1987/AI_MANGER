@@ -56,8 +56,10 @@ function Redact-SensitiveData {
     foreach ($key in $Data.Keys) {
         $lowerKey = $key.ToLower()
         $isMatch = $false
+        
+        # Use more efficient matching
         foreach ($pattern in $sensitiveKeys) {
-            if ($lowerKey -like "*$pattern*") {
+            if ($lowerKey.Contains($pattern.ToLower())) {
                 $isMatch = $true
                 break
             }
@@ -107,7 +109,8 @@ function Get-EnvironmentSnapshot {
 function Collect-DiagnosticsBundle {
     param(
         [Parameter(Mandatory)][string]$OutputPath,
-        [hashtable]$Context
+        [hashtable]$Context,
+        [string]$BuildRoot
     )
     
     Write-Host "==> Collecting diagnostics bundle" -ForegroundColor Cyan
@@ -140,13 +143,15 @@ function Collect-DiagnosticsBundle {
     }
     
     # Collect config (redacted)
-    $configPath = Join-Path $PSScriptRoot "..\..\config\toolstack.config.json"
-    if (Test-Path $configPath) {
-        try {
-            $configData = Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
-            $bundle.Config = Redact-SensitiveData -Data $configData
-        } catch {
-            $bundle.Config = @{ error = "Failed to read config" }
+    if ($BuildRoot) {
+        $configPath = Join-Path $BuildRoot "config\toolstack.config.json"
+        if (Test-Path $configPath) {
+            try {
+                $configData = Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
+                $bundle.Config = Redact-SensitiveData -Data $configData
+            } catch {
+                $bundle.Config = @{ error = "Failed to read config" }
+            }
         }
     }
     
@@ -195,13 +200,17 @@ function Register-PeriodicHealthScan {
     $action = New-ScheduledTaskAction -Execute "powershell.exe" `
         -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`""
     
-    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes) -RepetitionDuration ([TimeSpan]::MaxValue)
+    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
+        -RepetitionInterval (New-TimeSpan -Minutes $IntervalMinutes) `
+        -RepetitionDuration ([TimeSpan]::MaxValue)
     
-    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
+    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME `
+        -LogonType Interactive -RunLevel Limited
     
     $settings = New-ScheduledTaskSettingsSet -MultipleInstances Queue `
         -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
-        -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+        -RestartCount 3 `
+        -RestartInterval (New-TimeSpan -Minutes 1)
     
     try {
         Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
@@ -275,7 +284,7 @@ function Register-Plugin {
         $timestamp = (Get-Date).ToString('yyyyMMdd-HHmmss')
         $bundlePath = Join-Path $reportsDir "diagnostics-$timestamp.json"
         
-        Collect-DiagnosticsBundle -OutputPath $bundlePath -Context $Context
+        Collect-DiagnosticsBundle -OutputPath $bundlePath -Context $Context -BuildRoot $BuildRoot
     }
     
     task Observability.InstallHealthScan {
