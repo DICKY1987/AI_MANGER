@@ -16,7 +16,7 @@ function Ensure-InvokeBuild {
             throw "Failed to install InvokeBuild: $($_.Exception.Message). Please install manually: Install-Module InvokeBuild -Scope CurrentUser"
         }
     }
-    Import-Module InvokeBuild -ErrorAction Stop | Out-Null
+    Import-Module InvokeBuild -ErrorAction Stop
 }
 function Invoke-CliStack {
     [CmdletBinding()]
