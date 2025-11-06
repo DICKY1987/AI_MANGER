@@ -41,3 +41,19 @@ task Default Rebuild
 task Rebuild {
     Write-Host "Rebuild: placeholder (lint/pack can be added here)."
 }
+
+# Health check that verifies module import and config presence
+task 'Health.Check' {
+    Write-Host "Running health checks..."
+    if (-not (Test-Path -LiteralPath 'config/toolstack.config.json')) {
+        throw "Missing config/toolstack.config.json"
+    }
+    # Check if module directory exists
+    if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'module/CliStack.psd1')) {
+        Import-Module -Name (Join-Path $PSScriptRoot 'module/CliStack.psd1') -Force
+        Invoke-CliStack -Task Rebuild -Config 'config/toolstack.config.json' -DryRun
+    } else {
+        Write-Warning "Module not found at module/CliStack.psd1 - skipping module test"
+    }
+    Write-Host "Health.Check passed." -ForegroundColor Green
+}

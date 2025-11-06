@@ -3,14 +3,12 @@ on:
   push:
     tags:
       - 'v*.*.*'
-permissions:
-  contents: write
 jobs:
   release:
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: AI_MANGER
+    permissions:
+      contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - name: Install tooling
@@ -22,9 +20,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $version = (Import-PowerShellDataFile module/CliStack.psd1).ModuleVersion
+          $version = (Import-PowerShellDataFile AI_MANGER/module/CliStack.psd1).ModuleVersion
           New-Item -ItemType Directory -Path dist -Force | Out-Null
-          Compress-Archive -Path module/* -DestinationPath "dist/cli_stack_${version}.zip" -Force
+          Compress-Archive -Path AI_MANGER/module/* -DestinationPath "dist/cli_stack_${version}.zip" -Force
       - name: Optional code signing
         if: ${{ env.CODE_SIGN_CERT_BASE64 != '' && env.CODE_SIGN_CERT_PASSWORD != '' }}
         shell: pwsh
@@ -32,7 +30,7 @@ jobs:
           CODE_SIGN_CERT_BASE64: ${{ secrets.CODE_SIGN_CERT_BASE64 }}
           CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
         run: |
-          pwsh -File scripts/Sign-Files.ps1 -Paths @('module/CliStack.psm1','module/CliStack.psd1','scripts/Install-CliStack.ps1')
+          pwsh -File AI_MANGER/scripts/Sign-Files.ps1 -Paths @('AI_MANGER/module/CliStack.psm1','AI_MANGER/module/CliStack.psd1','AI_MANGER/scripts/Install-CliStack.ps1')
       - name: Generate release notes (placeholder)
         id: notes
         shell: pwsh
@@ -42,7 +40,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            AI_MANGER/dist/*.zip
-          body_path: AI_MANGER/NOTES.txt
+            dist/*.zip
+          body_path: NOTES.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
