@@ -23,5 +23,5 @@ foreach ($p in $Paths) {
   }
 }
 # Clean up: remove certificate from store
-Remove-Item -Path "cert:\\CurrentUser\\My\\$($cert.Thumbprint)" -ErrorAction SilentlyContinue
+Remove-Item -Path "cert:\CurrentUser\My\$($cert.Thumbprint)" -ErrorAction SilentlyContinue
 Remove-Item $tempPfx -Force -ErrorAction SilentlyContinue
