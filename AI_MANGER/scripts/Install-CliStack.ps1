@@ -59,7 +59,14 @@ if (-not (Test-Path $moduleRoot)) {
   $moduleRoot = $src
 }
 
-$target = Join-Path $HOME 'Documents\PowerShell\Modules\CliStack'
+# Dynamically determine the user module path for cross-version compatibility
+$userModulePath = ($env:PSModulePath -split [IO.Path]::PathSeparator | Where-Object {
+    $_ -like "$HOME*" -and $_ -match 'PowerShell\\Modules$|WindowsPowerShell\\Modules$'
+} | Select-Object -First 1)
+if (-not $userModulePath) {
+    throw "Could not determine user module path from PSModulePath."
+}
+$target = Join-Path $userModulePath 'CliStack'
 $targetParent = Split-Path -Parent $target
 New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
 
