@@ -6,7 +6,7 @@
     CompanyName       = 'AI_MANGER'
     Copyright         = '(c) AI_MANGER'
     Description       = 'CLI stack module with InvokeBuild entrypoints and packaging helpers.'
-    PowerShellVersion = '7.2'
+    PowerShellVersion = '7.0'
     FunctionsToExport = @('Invoke-CliStack')
     CmdletsToExport   = @()
     AliasesToExport   = @()
