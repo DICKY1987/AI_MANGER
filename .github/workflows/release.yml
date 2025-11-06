@@ -30,7 +30,7 @@ jobs:
           CODE_SIGN_CERT_BASE64: ${{ secrets.CODE_SIGN_CERT_BASE64 }}
           CODE_SIGN_CERT_PASSWORD: ${{ secrets.CODE_SIGN_CERT_PASSWORD }}
         run: |
-          pwsh -File scripts/Sign-Files.ps1 -Paths @('module/CliStack.psm1','module/CliStack.psd1','scripts/Install-CliStack.ps1')
+          pwsh -File AI_MANGER/scripts/Sign-Files.ps1 -Paths @('AI_MANGER/module/CliStack.psm1','AI_MANGER/module/CliStack.psd1','AI_MANGER/scripts/Install-CliStack.ps1')
       - name: Generate release notes (placeholder)
         id: notes
         shell: pwsh

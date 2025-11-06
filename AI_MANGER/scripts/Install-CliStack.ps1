@@ -64,7 +64,8 @@ $userModulePath = ($env:PSModulePath -split [IO.Path]::PathSeparator | Where-Obj
     $_ -like "$HOME*" -and $_ -match 'PowerShell\\Modules$|WindowsPowerShell\\Modules$'
 } | Select-Object -First 1)
 if (-not $userModulePath) {
-    throw "Could not determine user module path from PSModulePath."
+    # Fallback to PowerShell 7+ default if no match found
+    $userModulePath = Join-Path $HOME 'Documents\PowerShell\Modules'
 }
 $target = Join-Path $userModulePath 'CliStack'
 $targetParent = Split-Path -Parent $target
