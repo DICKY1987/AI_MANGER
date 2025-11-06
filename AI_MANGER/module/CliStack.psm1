@@ -9,9 +9,13 @@ function Ensure-InvokeBuild {
     if (-not (Test-ModuleAvailable -Name 'InvokeBuild')) {
         try {
             Write-Verbose "Installing InvokeBuild for current user..."
+            # Try to register PSGallery if not available
+            if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+                Register-PSRepository -Default -ErrorAction SilentlyContinue
+            }
             Install-Module -Name InvokeBuild -Scope CurrentUser -Force -ErrorAction Stop
         } catch {
-            throw "Failed to install InvokeBuild: $($_.Exception.Message)"
+            throw "Failed to install InvokeBuild: $($_.Exception.Message). Please install manually: Install-Module InvokeBuild -Scope CurrentUser"
         }
     }
     Import-Module InvokeBuild -ErrorAction Stop

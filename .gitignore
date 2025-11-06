@@ -1,0 +1,15 @@
+# Build artifacts
+dist/
+reports/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# PowerShell module cache
+*.psm1.cache
+
+# Test results
+*.trx
+TestResults/
