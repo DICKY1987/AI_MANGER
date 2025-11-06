@@ -22,7 +22,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $version = (Import-PowerShellDataFile module/CliStack.psd1).ModuleVersion
           New-Item -ItemType Directory -Path dist -Force | Out-Null
-          Compress-Archive -Path module/* -DestinationPath "dist/cli_stack_${version}.zip" -Force
+          Compress-Archive -Path AI_MANGER/module/* -DestinationPath "dist/cli_stack_${version}.zip" -Force
       - name: Optional code signing
         if: ${{ env.CODE_SIGN_CERT_BASE64 != '' && env.CODE_SIGN_CERT_PASSWORD != '' }}
         shell: pwsh
