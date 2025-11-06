@@ -27,8 +27,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          if (-not (Test-Path 'module/CliStack.psd1')) { Write-Host "Module manifest missing, skipping package."; exit 0 }
-          $version = (Import-PowerShellDataFile module/CliStack.psd1).ModuleVersion
+          if (-not (Test-Path 'AI_MANGER/module/CliStack.psd1')) { Write-Host "Module manifest missing, skipping package."; exit 0 }
+          $version = (Import-PowerShellDataFile AI_MANGER/module/CliStack.psd1).ModuleVersion
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           Compress-Archive -Path AI_MANGER/module/* -DestinationPath "dist/cli_stack_${version}.zip" -Force
       - name: Optional code signing
