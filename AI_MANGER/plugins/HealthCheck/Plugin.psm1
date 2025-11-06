@@ -1,17 +1,25 @@
 # ModuleName: HealthCheck
 param()
+
 function Register-Plugin {
   param($Context, $BuildRoot)
+  Import-Module (Join-Path $BuildRoot "plugins\Common\Plugin.Interfaces.psm1") -Force
+  
+  # Initialize plugin context
+  Initialize-PluginContext -Context $Context
 
   function Expand-Env([string]$s) { [Environment]::ExpandEnvironmentVariables($s) }
+  
   function Check-Cmd([string]$name) {
     $path = (Get-Command $name -ErrorAction SilentlyContinue | Select-Object -First 1).Source
     return @{ cmd=$name; path=$path; ok=([bool]$path) }
   }
+  
   function Check-Dir([string]$path) {
     $p = Expand-Env $path
     return @{ path=$p; exists=(Test-Path $p) }
   }
+  
   function Path-OrderOk([string[]]$wantOrder) {
     $u = [Environment]::GetEnvironmentVariable('Path','User')
     $parts = ($u -split ';') | Where-Object { $_ } 
@@ -27,8 +35,18 @@ function Register-Plugin {
   }
 
   task Health.Check {
+    Write-LogInfo "Running health checks..."
+    
+    $isDryRun = Get-IsDryRun -Context $Context
     $reportDir = Expand-Env $Context.Reports.Dir
-    if (-not (Test-Path $reportDir)) { New-Item -ItemType Directory -Force -Path $reportDir | Out-Null }
+    
+    if (-not $isDryRun) {
+      if (-not (Test-Path $reportDir)) { 
+        New-Item -ItemType Directory -Force -Path $reportDir | Out-Null 
+        Write-LogDebug "Created report directory: $reportDir"
+      }
+    }
+    
     $out = Join-Path $reportDir "health.json"
 
     $wantOrder = @(
@@ -39,6 +57,7 @@ function Register-Plugin {
       "C:\Tools\cargo\bin"
     )
 
+    Write-LogDebug "Gathering environment information"
     $res = @{
       time = (Get-Date).ToString("s")
       env  = @{
@@ -79,18 +98,37 @@ function Register-Plugin {
       advice = @()
     }
 
+    Write-LogDebug "Analyzing health check results"
     if (-not $res.pathOrder.exists -or -not $res.pathOrder.ordered) {
-      $res.advice += "Reorder User PATH to front-load: " + ($wantOrder -join ';')
+      $advice = "Reorder User PATH to front-load: " + ($wantOrder -join ';')
+      $res.advice += $advice
+      Write-LogWarning $advice
     }
+    
     foreach ($d in $res.dirs) {
-      if (-not $d.exists) { $res.advice += "Create missing directory: " + $d.path }
+      if (-not $d.exists) { 
+        $advice = "Create missing directory: " + $d.path
+        $res.advice += $advice
+        Write-LogWarning $advice
+      }
     }
+    
     foreach ($c in $res.commands) {
-      if (-not $c.ok) { $res.advice += "Install or expose on PATH: " + $c.cmd }
+      if (-not $c.ok) { 
+        $advice = "Install or expose on PATH: " + $c.cmd
+        $res.advice += $advice
+        Write-LogWarning $advice
+      }
     }
 
-    ($res | ConvertTo-Json -Depth 6) | Set-Content -Path $out -Encoding UTF8
-    Write-Host "Wrote $out" -ForegroundColor Green
+    if (-not $isDryRun) {
+      ($res | ConvertTo-Json -Depth 6) | Set-Content -Path $out -Encoding UTF8
+      Write-LogSuccess "Health check report written to: $out"
+    } else {
+      Write-LogInfo "[DRY-RUN] Would write health check report to: $out"
+      Write-LogInfo "Found $($res.advice.Count) potential issues"
+    }
   }
 }
+
 Export-ModuleMember -Function Register-Plugin
