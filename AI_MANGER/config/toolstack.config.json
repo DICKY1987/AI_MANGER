@@ -123,5 +123,26 @@
   },
   "Reports": {
     "Dir": "%LOCALAPPDATA%\\CLI_Reports"
+  },
+  "Observability": {
+    "HealthScanIntervalMinutes": 60,
+    "TelemetryUrl": "",
+    "LogFiles": [
+      {
+        "Path": "C:\\Tools\\audit\\4663.jsonl",
+        "MaxSizeMB": 10,
+        "MaxFiles": 5
+      }
+    ],
+    "Redaction": {
+      "Enabled": true,
+      "SensitivePatterns": [
+        "password",
+        "token",
+        "apikey",
+        "secret",
+        "credential"
+      ]
+    }
   }
 }

@@ -15,11 +15,23 @@ Invoke-Build -File .\build.ps1 Verify     # check versions
 Invoke-Build -File .\build.ps1 WatcherWatch  # start real-time watcher
 ```
 
+## Architecture
+
+**New in v2.0**: This project now features a hardened architecture with:
+- ✅ Standardized logging with configurable levels
+- ✅ Consistent error handling with standard exit codes
+- ✅ Idempotency support (tasks can run multiple times safely)
+- ✅ Dry-run mode for testing without side effects
+- ✅ JSON schema validation for configuration
+- ✅ Cross-platform support (Windows/Linux/macOS)
+
+See [Architecture Hardening Guide](docs/ArchitectureHardening.md) for details.
+
 ## Customize
 - Edit `config\toolstack.config.json` for paths and package lists.
 - Add plugins in `plugins\<Name>\Plugin.psm1`; implement `Register-Plugin` and call `task ... {}`.
 - Helper scripts live in `scripts\` (already included).
-
+- Configuration is validated against JSON schema in `config\toolstack.schema.json`.
 
 ## New plugins & tasks
 
@@ -71,3 +83,35 @@ Quick environment sanity check -> JSON report.
 ```powershell
 Invoke-Build -File .\build.ps1 Health.Check   # writes health.json
 ```
+
+### Observability
+Comprehensive observability and maintenance capabilities including log rotation, diagnostics bundles, and periodic health scans.
+```powershell
+# Rotate JSONL logs when they exceed size limits
+Invoke-Build -File .\build.ps1 Observability.RotateLogs
+
+# Generate redaction-safe diagnostics bundle
+Invoke-Build -File .\build.ps1 Observability.Diagnostics  # creates diagnostics-{timestamp}.json
+
+# Install periodic health scan (scheduled task)
+Invoke-Build -File .\build.ps1 Observability.InstallHealthScan
+
+# Remove periodic health scan
+Invoke-Build -File .\build.ps1 Observability.RemoveHealthScan
+
+# Telemetry hook (placeholder for future integration)
+Invoke-Build -File .\build.ps1 Observability.Telemetry
+```
+
+**Diagnostics Bundle Contents:**
+- System information (hostname, OS, PowerShell version)
+- Environment variables (redacted)
+- Health check results
+- Configuration (with sensitive data redacted)
+- Recent audit log entries (sample)
+
+**Log Rotation Settings** (in `config\toolstack.config.json`):
+- Configure in `Observability.LogFiles` array
+- Set `MaxSizeMB` and `MaxFiles` per log file
+- Audit logs automatically included if configured
+

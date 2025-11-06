@@ -1,1 +1,171 @@
-{ "$schema": "http://json-schema.org/draft-07/schema#" }
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ToolStack Configuration Schema",
+  "description": "Schema for AI_MANGER toolstack configuration",
+  "type": "object",
+  "properties": {
+    "reportsDir": {
+      "type": "string",
+      "description": "Directory for reports output",
+      "default": "reports"
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warning", "error"],
+          "default": "info",
+          "description": "Logging level for all tasks"
+        },
+        "logFile": {
+          "type": "string",
+          "description": "Optional log file path"
+        }
+      },
+      "required": ["level"],
+      "additionalProperties": false
+    },
+    "tasks": {
+      "type": "object",
+      "properties": {
+        "bootstrap": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "watch": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "ToolsRoot": {
+      "type": "string",
+      "description": "Root directory for all tools",
+      "minLength": 1
+    },
+    "PipxApps": {
+      "type": "array",
+      "description": "List of Python CLI apps to install via pipx",
+      "items": { "type": "string" }
+    },
+    "NpmGlobal": {
+      "type": "array",
+      "description": "List of npm packages to install globally",
+      "items": { "type": "string" }
+    },
+    "CopilotPkgs": {
+      "type": "array",
+      "description": "List of Copilot packages to try installing",
+      "items": { "type": "string" }
+    },
+    "WatchRoots": {
+      "type": "array",
+      "description": "Root directories to watch for cache/config enforcement",
+      "items": { "type": "string" }
+    },
+    "CentralCache": {
+      "type": "string",
+      "description": "Central cache directory path"
+    },
+    "BuildWrappers": {
+      "type": "boolean",
+      "description": "Whether to build wrapper scripts"
+    },
+    "Pins": {
+      "type": "object",
+      "description": "Version pinning configuration",
+      "properties": {
+        "pipx": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "npm": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Audit": {
+      "type": "object",
+      "properties": {
+        "AllowRoots": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "Notify": {
+          "type": "object",
+          "properties": {
+            "Toast": { "type": "boolean" },
+            "WriteJson": { "type": "string" },
+            "WebhookUrl": { "type": "string" }
+          }
+        },
+        "TaskName": { "type": "string" }
+      }
+    },
+    "MasterBin": {
+      "type": "object",
+      "properties": {
+        "Enable": { "type": "boolean" },
+        "Path": { "type": "string" },
+        "Sources": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "Priority": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "DenyList": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "Scan": {
+      "type": "object",
+      "properties": {
+        "Roots": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "AllowCentral": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "Patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "MinSizeKBForHash": { "type": "number" }
+      }
+    },
+    "Secrets": {
+      "type": "object",
+      "properties": {
+        "VaultPath": { "type": "string" },
+        "EnvMap": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "Reports": {
+      "type": "object",
+      "properties": {
+        "Dir": { "type": "string" }
+      }
+    }
+  },
+  "required": ["ToolsRoot", "logging"],
+  "additionalProperties": true
+}
