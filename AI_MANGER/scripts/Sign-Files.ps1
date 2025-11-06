@@ -13,7 +13,7 @@ $bytes = [Convert]::FromBase64String($CertBase64)
 $tempPfx = Join-Path $env:TEMP 'codesign.pfx'
 [IO.File]::WriteAllBytes($tempPfx, $bytes)
 $secure = ConvertTo-SecureString $CertPassword -AsPlainText -Force
-$cert = Import-PfxCertificate -FilePath $tempPfx -CertStoreLocation cert:\\CurrentUser\\My -Password $secure
+$cert = Import-PfxCertificate -FilePath $tempPfx -CertStoreLocation cert:\CurrentUser\My -Password $secure
 foreach ($p in $Paths) {
   if (Test-Path $p) {
     Write-Host "Signing $p"
